@@ -48,48 +48,64 @@ int main(int argc, char *argv[]){
 	}
 
 	ni = tmsg/8;
-	int numtasks, rank, dest, source, rc, count, tag = 1;
-	long int mensagem[ni];
+	int dest, source, rc, tag = 1;
 	MPI_Status Stat;
+
+	long int *inmsg = calloc(ni, sizeof(long int));
+	long int *outmsg = calloc(ni, sizeof(long int));
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &nproc);
 	MPI_Comm_rank(MPI_COMM_WORLD, &processId);
 
-	long int i;
 	if(processId == 0){
-		for(i = 1; i <= ni; i++)
-			mensagem[i-1] = i;
+		for(long int i = 1; i <= ni; i++)
+			inmsg[i-1] = i;
 	}
 	else {
-		for(int h = 0; i < ni; i++){
+		long int i = ni + 1;
+		for(long int h = 0; h < ni; h++){
+			inmsg[h] = i;
 			i++;
-			mensagem[h] = i;
 		}
 	}
+
+	printf("Processo: %d, in\n", processId);
+	for(int i = 0; i < ni; i++){
+		printf("%ld ", inmsg[i]);
+	}
+	printf("\n");
 	
 	if(par == 1){
 		if ( processId == 0 ) {
 			dest = 1;
 			source = 1;
 			for(int i = 1; i <= ni; i++){
-				rc = MPI_Send(&mensagem[i], ni, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
-				rc = MPI_Recv(&mensagem[i], ni, MPI_CHAR, source, tag, MPI_COMM_WORLD, &Stat);
+				rc = MPI_Send(&inmsg[i], ni, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
+				rc = MPI_Recv(&outmsg[i], ni, MPI_CHAR, source, tag, MPI_COMM_WORLD, &Stat);
 			}
 		}
 		else if ( processId == 1 ) {
 			dest = 0;
 			source = 0;
 			for(int i = 1; i <= ni; i++){
-				rc = MPI_Recv(&mensagem[i], ni, MPI_CHAR, source, tag, MPI_COMM_WORLD, &Stat);
-				rc = MPI_Send(&mensagem[i], ni, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
+				rc = MPI_Recv(&inmsg[i], ni, MPI_CHAR, source, tag, MPI_COMM_WORLD, &Stat);
+				rc = MPI_Send(&outmsg[i], ni, MPI_CHAR, dest, tag, MPI_COMM_WORLD);	
 			}
 		}
 	}
+	else if(par == 2){
+
+	}
+	
+	printf("Processo: %d, out\n", processId);
 	for(int i = 0; i < ni; i++){
-		printf("%ld ", mensagem[i]);
+		printf("%ld ", outmsg[i]);
 	}
 	printf("\n");
+
+	free(inmsg);
+	free(outmsg);
 
 	MPI_Finalize( );
 	return 0;
