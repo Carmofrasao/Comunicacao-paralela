@@ -48,7 +48,6 @@ int main(int argc, char *argv[]){
 	}
 
 	ni = tmsg/8;
-	int dest, source, rc, tag = 1;
 	MPI_Status Stat;
 
 	long int *inmsg = calloc(ni, sizeof(long int));
@@ -77,6 +76,7 @@ int main(int argc, char *argv[]){
 	printf("\n");
 	
 	if(par == 1){
+		int dest, source, rc, tag = 1;
 		if ( processId == 0 ) {
 			dest = 1;
 			source = 1;
@@ -95,7 +95,21 @@ int main(int argc, char *argv[]){
 		}
 	}
 	else if(par == 2){
+		int next, prev, tag1=1, tag2=2;
+		MPI_Request reqs[4];
+		MPI_Status stats[4];
 
+		prev = processId - 1;
+		next = processId + 1;
+		if ( processId == 0 ) prev = nproc - 1;
+		if ( processId == ( nproc - 1 )) next = 0;
+		for(int i = 0; i < ni; i++){
+			MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag1, MPI_COMM_WORLD, &reqs[0]);
+			MPI_Irecv(&outmsg[i], 1, MPI_LONG, next, tag2, MPI_COMM_WORLD, &reqs[1]);
+			MPI_Isend(&inmsg[i], 1, MPI_LONG, prev, tag2, MPI_COMM_WORLD, &reqs[2]);
+			MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag1, MPI_COMM_WORLD, &reqs[3]);
+			MPI_Waitall(4, reqs, stats);
+		}
 	}
 	
 	printf("Processo: %d, out\n", processId);
