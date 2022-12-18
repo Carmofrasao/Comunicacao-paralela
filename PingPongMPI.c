@@ -80,17 +80,17 @@ int main(int argc, char *argv[]){
 		if ( processId == 0 ) {
 			dest = 1;
 			source = 1;
-			for(int i = 1; i <= ni; i++){
-				rc = MPI_Send(&inmsg[i], ni, MPI_CHAR, dest, tag, MPI_COMM_WORLD);
-				rc = MPI_Recv(&outmsg[i], ni, MPI_CHAR, source, tag, MPI_COMM_WORLD, &Stat);
+			for(int i = 0; i < ni; i++){
+				rc = MPI_Send(&inmsg[i], 1, MPI_LONG, dest, tag, MPI_COMM_WORLD);
+				rc = MPI_Recv(&outmsg[i], 1, MPI_LONG, source, tag, MPI_COMM_WORLD, &Stat);
 			}
 		}
 		else if ( processId == 1 ) {
 			dest = 0;
 			source = 0;
-			for(int i = 1; i <= ni; i++){
-				rc = MPI_Recv(&inmsg[i], ni, MPI_CHAR, source, tag, MPI_COMM_WORLD, &Stat);
-				rc = MPI_Send(&outmsg[i], ni, MPI_CHAR, dest, tag, MPI_COMM_WORLD);	
+			for(int i = 0; i < ni; i++){
+				rc = MPI_Recv(&outmsg[i], 1, MPI_LONG, source, tag, MPI_COMM_WORLD, &Stat);
+				rc = MPI_Send(&inmsg[i], 1, MPI_LONG, dest, tag, MPI_COMM_WORLD);	
 			}
 		}
 	}
