@@ -4,8 +4,8 @@
 #include <stdlib.h>
 #include "chrono.c"
 
-int nmsg;       // o número total de mensagens
-int tmsg;       // o tamanho de cada mensagem
+long nmsg;       // o número total de mensagens
+long tmsg;       // o tamanho de cada mensagem
 int nproc;      // o número de processos MPI
 int par;        // opcional
 int processId; 	// rank dos processos
@@ -142,10 +142,12 @@ int main(int argc, char *argv[]){
 		// calcular e imprimir a VAZAO (numero de operacoes/s)
 		double total_time_in_seconds = (double)chrono_gettotal(&pingPongTime) /
 									((double)1000 * 1000 * 1000);
+	    double total_time_in_micro = (double)chrono_gettotal(&pingPongTime) /
+									((double)1000);
 		printf("total_time_in_seconds: %lf s\n", total_time_in_seconds);
-		printf("Latencia: %lf s\n", total_time_in_seconds / nmsg);
-		double MBPS = ((nmsg*tmsg) / total_time_in_seconds)/(1000*1000);
-		printf("Throughput: %lf OP/s\n", MBPS);
+		printf("Latencia: %lf us/nmsg\n", (total_time_in_micro / nmsg)/2);
+		double MBPS = ((double)(nmsg*tmsg) / ((double)total_time_in_seconds*1000*1000));
+		printf("Throughput: %lf MB/s\n", MBPS);
 	}
 	
 	#if DEBUG == 1
