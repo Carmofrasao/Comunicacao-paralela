@@ -94,18 +94,20 @@ int main(int argc, char *argv[]){
 		if ( processId == 0 ) {
 			dest = 1;
 			source = 1;
-			for(int i = 0; i < ni; i++){
-				rc = MPI_Send(&inmsg[i], 1, MPI_LONG, dest, tag, MPI_COMM_WORLD);
-				rc = MPI_Recv(&outmsg[i], 1, MPI_LONG, source, tag, MPI_COMM_WORLD, &Stat);
-			}
+			for(int m = 0; m < nmsg/2; m++)
+				for(int i = 0; i < ni; i++){
+					rc = MPI_Send(&inmsg[i], 1, MPI_LONG, dest, tag, MPI_COMM_WORLD);
+					rc = MPI_Recv(&outmsg[i], 1, MPI_LONG, source, tag, MPI_COMM_WORLD, &Stat);
+				}
 		}
 		else if ( processId == 1 ) {
 			dest = 0;
 			source = 0;
-			for(int i = 0; i < ni; i++){
-				rc = MPI_Recv(&outmsg[i], 1, MPI_LONG, source, tag, MPI_COMM_WORLD, &Stat);
-				rc = MPI_Send(&inmsg[i], 1, MPI_LONG, dest, tag, MPI_COMM_WORLD);	
-			}
+			for(int m = 0; m < nmsg/2; m++)
+				for(int i = 0; i < ni; i++){
+					rc = MPI_Recv(&outmsg[i], 1, MPI_LONG, source, tag, MPI_COMM_WORLD, &Stat);
+					rc = MPI_Send(&inmsg[i], 1, MPI_LONG, dest, tag, MPI_COMM_WORLD);	
+				}
 		}
 	}
 	else if(par == 2){
@@ -116,20 +118,22 @@ int main(int argc, char *argv[]){
 		if ( processId == 0 ) {
 			prev = 1;
 			next = 1;
-			for(int i = 0; i < ni; i++){
-				MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag2, MPI_COMM_WORLD, &reqs[1]);
-				MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag1, MPI_COMM_WORLD, &reqs[0]);
-				MPI_Waitall(2, reqs, stats);
-			}
+			for(int m = 0; m < nmsg/2; m++)
+				for(int i = 0; i < ni; i++){
+					MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag2, MPI_COMM_WORLD, &reqs[1]);
+					MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag1, MPI_COMM_WORLD, &reqs[0]);
+					MPI_Waitall(2, reqs, stats);
+				}
 		}
 		else if ( processId == 1 ) {
 			prev = 0;
 			next = 0;
-			for(int i = 0; i < ni; i++){
-				MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag1, MPI_COMM_WORLD, &reqs[1]);
-				MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag2, MPI_COMM_WORLD, &reqs[0]);
-				MPI_Waitall(2, reqs, stats);
-			}
+			for(int m = 0; m < nmsg/2; m++)
+				for(int i = 0; i < ni; i++){
+					MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag1, MPI_COMM_WORLD, &reqs[1]);
+					MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag2, MPI_COMM_WORLD, &reqs[0]);
+					MPI_Waitall(2, reqs, stats);
+				}
 		}
 	}
 
