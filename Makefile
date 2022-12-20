@@ -1,4 +1,4 @@
 all: PingPongMPI
 
 PingPongMPI: PingPongMPI.c chrono.c
-	mpicc PingPongMPI.c -o PingPongMPI
+	mpic++ PingPongMPI.c -O3 -o PingPongMPI

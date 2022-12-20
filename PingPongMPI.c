@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "chrono.c"
 
 int nmsg;       // o número total de mensagens
 int tmsg;       // o tamanho de cada mensagem
@@ -9,6 +10,10 @@ int nproc;      // o número de processos MPI
 int par;        // opcional
 int processId; 	// rank dos processos
 int ni;			// tamanho do vetor contendo as mensagens
+
+chronometer_t pingPongTime;
+
+// #define DEBUG 1
 
 int main(int argc, char *argv[]){
 
@@ -50,8 +55,8 @@ int main(int argc, char *argv[]){
 	ni = tmsg/8;
 	MPI_Status Stat;
 
-	long int *inmsg = calloc(ni, sizeof(long int));
-	long int *outmsg = calloc(ni, sizeof(long int));
+	long int *inmsg = (long int*)calloc(ni, sizeof(long int));
+	long int *outmsg = (long int*)calloc(ni, sizeof(long int));
 
 	MPI_Init(&argc, &argv);
 	MPI_Comm_size(MPI_COMM_WORLD, &nproc);
@@ -69,12 +74,21 @@ int main(int argc, char *argv[]){
 		}
 	}
 
-	printf("Processo: %d, in\n", processId);
-	for(int i = 0; i < ni; i++){
-		printf("%ld ", inmsg[i]);
+	#if DEBUG == 1
+		printf("Processo: %d, in\n", processId);
+		for(int i = 0; i < ni; i++){
+			printf("%ld ", inmsg[i]);
+		}
+		printf("\n");
+	#endif
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	if(processId == 0){
+		chrono_reset(&pingPongTime);
+		chrono_start(&pingPongTime);
 	}
-	printf("\n");
-	
+
 	if(par == 1){
 		int dest, source, rc, tag = 1;
 		if ( processId == 0 ) {
@@ -96,27 +110,51 @@ int main(int argc, char *argv[]){
 	}
 	else if(par == 2){
 		int next, prev, tag1=1, tag2=2;
-		MPI_Request reqs[4];
-		MPI_Status stats[4];
+		MPI_Request reqs[ni];
+		MPI_Status stats[ni];
 
-		prev = processId - 1;
-		next = processId + 1;
-		if ( processId == 0 ) prev = nproc - 1;
-		if ( processId == ( nproc - 1 )) next = 0;
-		for(int i = 0; i < ni; i++){
-			MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag1, MPI_COMM_WORLD, &reqs[0]);
-			MPI_Irecv(&outmsg[i], 1, MPI_LONG, next, tag2, MPI_COMM_WORLD, &reqs[1]);
-			MPI_Isend(&inmsg[i], 1, MPI_LONG, prev, tag2, MPI_COMM_WORLD, &reqs[2]);
-			MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag1, MPI_COMM_WORLD, &reqs[3]);
-			MPI_Waitall(4, reqs, stats);
+		if ( processId == 0 ) {
+			prev = 1;
+			next = 1;
+			for(int i = 0; i < ni; i++){
+				MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag2, MPI_COMM_WORLD, &reqs[1]);
+				MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag1, MPI_COMM_WORLD, &reqs[0]);
+				MPI_Waitall(2, reqs, stats);
+			}
+		}
+		else if ( processId == 1 ) {
+			prev = 0;
+			next = 0;
+			for(int i = 0; i < ni; i++){
+				MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag1, MPI_COMM_WORLD, &reqs[1]);
+				MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag2, MPI_COMM_WORLD, &reqs[0]);
+				MPI_Waitall(2, reqs, stats);
+			}
 		}
 	}
-	
-	printf("Processo: %d, out\n", processId);
-	for(int i = 0; i < ni; i++){
-		printf("%ld ", outmsg[i]);
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	if(processId == 0){
+		chrono_stop(&pingPongTime);
+		chrono_reportTime(&pingPongTime, "pingPongTime");
+
+		// calcular e imprimir a VAZAO (numero de operacoes/s)
+		double total_time_in_seconds = (double)chrono_gettotal(&pingPongTime) /
+									((double)1000 * 1000 * 1000);
+		printf("total_time_in_seconds: %lf s\n", total_time_in_seconds);
+		printf("Latencia: %lf s\n", total_time_in_seconds / ni);
+		double OPS = (nmsg*tmsg) / total_time_in_seconds;
+		printf("Throughput: %lf OP/s\n", OPS);
 	}
-	printf("\n");
+	
+	#if DEBUG == 1
+		printf("Processo: %d, out\n", processId);
+		for(int i = 0; i < ni; i++){
+			printf("%ld ", outmsg[i]);
+		}
+		printf("\n");
+	#endif
 
 	free(inmsg);
 	free(outmsg);
