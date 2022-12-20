@@ -143,9 +143,9 @@ int main(int argc, char *argv[]){
 		double total_time_in_seconds = (double)chrono_gettotal(&pingPongTime) /
 									((double)1000 * 1000 * 1000);
 		printf("total_time_in_seconds: %lf s\n", total_time_in_seconds);
-		printf("Latencia: %lf s\n", total_time_in_seconds / ni);
-		double OPS = (nmsg*tmsg) / total_time_in_seconds;
-		printf("Throughput: %lf OP/s\n", OPS);
+		printf("Latencia: %lf s\n", total_time_in_seconds / nmsg);
+		double MBPS = ((nmsg*tmsg) / total_time_in_seconds)/(1000*1000);
+		printf("Throughput: %lf OP/s\n", MBPS);
 	}
 	
 	#if DEBUG == 1
