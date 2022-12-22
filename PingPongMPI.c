@@ -15,34 +15,103 @@ chronometer_t pingPongTime;
 
 // #define DEBUG 1
 
+void verificaVetores( long ping[], long pong[], int ni )
+{
+   static int twice = 0;
+   int ping_ok = 1;
+   int pong_ok = 1;
+   int i, rank;
+      
+   MPI_Comm_rank( MPI_COMM_WORLD, &rank );   
+   
+   if( twice == 0 ) {
+  
+      if (rank == 0) {
+      
+          for( i=0; i<ni; i++ ) {
+            if( ping[i] != i+1 ) { ping_ok = 0; break; }
+            if( pong[i] != 0   ) { pong_ok = 0; break; }
+          }
+          if( !ping_ok )
+             fprintf(stderr, 
+               "--------- rank 0, initial value of ping[%d] = %ld (wrong!)\n", i, ping[i] );
+          if( !pong_ok )
+             fprintf(stderr, 
+               "--------- rank 0, initial value of pong[%d] = %ld (wrong!)\n", i, pong[i] );
+          if( ping_ok && pong_ok )
+             fprintf(stderr, 
+               "--------- rank 0, initial value of ping and pong are OK\n" );
+
+      } else if (rank == 1) {
+      
+          for( i=0; i<ni; i++ ) {
+            if( ping[i] != 0      ) { ping_ok = 0; break; }
+            if( pong[i] != i+ni+1 ) { pong_ok = 0; break; }
+          }
+          if( !ping_ok )
+             fprintf(stderr, 
+               "--------- rank 1, initial value of ping[%d] = %ld (wrong!)\n", i, ping[i] );
+          if( !pong_ok )
+             fprintf(stderr, 
+               "--------- rank 1, initial value of pong[%d] = %ld (wrong!)\n", i, pong[i] );
+          if( ping_ok && pong_ok )
+             fprintf(stderr, 
+               "--------- rank 1, initial values of ping and pong are OK\n" );
+      }          
+   }   // end twice == 0
+   
+   if( twice == 1 ) {
+  
+          for( i=0; i<ni; i++ ) {
+            if( ping[i] != i+1      ) { ping_ok = 0; break; }
+            if( pong[i] != i+ni+1   ) { pong_ok = 0; break; }
+          }
+          if( !ping_ok )
+             fprintf(stderr, 
+               "--------- rank %d, FINAL value of ping[%d] = %ld (wrong!)\n", rank, i, ping[i] );
+          if( !pong_ok )
+             fprintf(stderr, 
+               "--------- rank %d, FINAL value of pong[%d] = %ld (wrong!)\n", rank, i, pong[i] );
+          if( ping_ok && pong_ok )
+             fprintf(stderr, 
+               "--------- rank %d, FINAL values of ping and pong are OK\n", rank );
+
+   }  // end twice == 1
+   
+   ++twice;
+   if( twice > 2 )
+      fprintf(stderr, 
+               "--------- rank %d, verificaVetores CALLED more than 2 times!!!\n", rank );     
+}          
+
 int main(int argc, char *argv[]){
 
 	par = 1;
 
 	if (argc < 4){
-		printf("usage: %s <nmsg> <tmsg> <nproc> (<-bl> OU <-nbl>)\n",
+		printf("usage: mpirun -np 2 %s <nmsg> <tmsg> <nproc> (<-bl> OU <-nbl>)\n",
 			   argv[0]);
 		return 0;
 	}
 	else{
         nmsg = atoi(argv[1]);
 		if (nmsg % 2 != 0){
-			printf("usage: %s <nmsg> <tmsg> <nproc> (<-bl> OU <-nbl>)\n",
-				   argv[0]);
+			printf("usage: mpirun -np 2 %s <nmsg> <tmsg> <nproc> (<-bl> OU <-nbl>)\n",
+			   argv[0]);
 			printf("<nmsg> deve ser par\n");
 			return 0;
 		}
 		tmsg = atoi(argv[2]);
 		if (tmsg % 8 != 0){
-			printf("usage: %s <nmsg> <tmsg> <nproc> (<-bl> OU <-nbl>)\n",
-				   argv[0]);
+			printf("usage: mpirun -np 2 %s <nmsg> <tmsg> <nproc> (<-bl> OU <-nbl>)\n",
+			   argv[0]);
 			printf("<tmsg> deve ser multiplo de 8\n");
 			return 0;
 		}
         nproc = atoi(argv[3]);
         if (nproc != 2){
-            printf("usage: %s <nmsg> <tmsg> <nproc> (-bl OU -nbl)\n",
-				   argv[0]);
+            printf("usage: mpirun -np 2 %s <nmsg> <tmsg> <nproc> (<-bl> OU <-nbl>)\n",
+			   argv[0]);
 			printf("<nproc> deve ser 2\n");
 			return 0;
         }
@@ -73,6 +142,11 @@ int main(int argc, char *argv[]){
 			i++;
 		}
 	}
+
+	if(processId == 0)
+		verificaVetores( inmsg, outmsg, ni );
+	else
+		verificaVetores( outmsg, inmsg, ni );
 
 	#if DEBUG == 1
 		printf("Processo: %d, in\n", processId);
@@ -111,16 +185,16 @@ int main(int argc, char *argv[]){
 		}
 	}
 	else if(par == 2){
-		int next, prev, tag1=1, tag2=2;
-		MPI_Request reqs[ni];
-		MPI_Status stats[ni];
+		int next, prev, tag1=1, tag2=2, rc;
+		MPI_Request reqs[2];
+		MPI_Status stats[2];
 
 		if ( processId == 0 ) {
 			prev = 1;
 			next = 1;
 			for(int m = 0; m < nmsg/2; m++)
 				for(int i = 0; i < ni; i++){
-					MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag2, MPI_COMM_WORLD, &reqs[1]);
+					rc = MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag2, MPI_COMM_WORLD, &reqs[1]);
 					MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag1, MPI_COMM_WORLD, &reqs[0]);
 					MPI_Waitall(2, reqs, stats);
 				}
@@ -130,8 +204,8 @@ int main(int argc, char *argv[]){
 			next = 0;
 			for(int m = 0; m < nmsg/2; m++)
 				for(int i = 0; i < ni; i++){
-					MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag1, MPI_COMM_WORLD, &reqs[1]);
-					MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag2, MPI_COMM_WORLD, &reqs[0]);
+					rc = MPI_Irecv(&outmsg[i], 1, MPI_LONG, prev, tag2, MPI_COMM_WORLD, &reqs[0]);
+					rc = MPI_Isend(&inmsg[i], 1, MPI_LONG, next, tag1, MPI_COMM_WORLD, &reqs[1]);
 					MPI_Waitall(2, reqs, stats);
 				}
 		}
@@ -153,6 +227,11 @@ int main(int argc, char *argv[]){
 		double MBPS = ((double)(nmsg*tmsg) / ((double)total_time_in_seconds*1000*1000));
 		printf("Throughput: %lf MB/s\n", MBPS);
 	}
+
+	if(processId == 0)
+		verificaVetores( inmsg, outmsg, ni );
+	else
+		verificaVetores( outmsg, inmsg, ni );
 	
 	#if DEBUG == 1
 		printf("Processo: %d, out\n", processId);
