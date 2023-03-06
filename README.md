@@ -11,6 +11,7 @@ com mensagens formadas por vetores de long.
 Para ultilizar o programa, execute o comando make no terminal (dentro da pasta em que o código esta) e execute um desses comandos:
 
 > ./PingPongMPI
+
 ou
 
 > mpirun -np 2 ./PingPongMPI < nmsg > < tmsg > < nproc > (< -bl > OU < -nbl >)
