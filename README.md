@@ -1,4 +1,4 @@
-# Broadcast em cluster
+# Comunicação paralela
 
 Trabalho feito para a matéria de programação paralela, no curso de Ciencia da Computação, da Universidade Federal do Paraná.
 
